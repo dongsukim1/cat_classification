@@ -1,0 +1,3 @@
+/data
+*.pem
+/EC2+s3/*.json
