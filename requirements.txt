@@ -1,0 +1,21 @@
+# ML/DL + utility functions
+torch>=2.0.0
+torchvision>=0.15.0
+scikit-learn>=1.0.0
+
+# Image processing
+Pillow>=8.0.0
+
+# Visualization + data handling
+numpy>=1.21.0
+matplotlib>=3.5.0
+pandas>=1.3.0
+seaborn>=0.11.0
+
+# AWS integration
+boto3>=1.26.0
+sagemaker>=2.150.0
+
+# misc
+requests>=2.25.0
+setuptools>=60.0.0
