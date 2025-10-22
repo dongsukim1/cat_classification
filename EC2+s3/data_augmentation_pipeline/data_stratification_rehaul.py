@@ -6,6 +6,87 @@ import random
 from typing import Dict, List, Tuple, Any
 import numpy as np
 
+def generate_empty_annotation(image_id: str, image_path: str, empty_category_id: int) -> Dict[str, Any]:
+    """
+    Generate a random bounding box annotation for an empty image.
+    
+    Args:
+        image_id: The image identifier
+        image_path: Path to the image file
+        empty_category_id: Category ID for 'empty' class
+        
+    Returns:
+        Dictionary containing the generated annotation data
+    """
+    img_width, img_height = 2048, 1494
+    
+    # Generate random bounding box
+    # Make it reasonably sized (10-30% of image dimensions)
+    min_box_size = min(img_width, img_height) * 0.1
+    max_box_size = min(img_width, img_height) * 0.3
+    
+    box_width = random.uniform(min_box_size, max_box_size)
+    box_height = random.uniform(min_box_size, max_box_size)
+    
+    # Random position ensuring box stays within image bounds
+    max_x = img_width - box_width
+    max_y = img_height - box_height
+    
+    x = random.uniform(0, max(0, max_x))
+    y = random.uniform(0, max(0, max_y))
+    
+    # Generate a unique annotation ID
+    annotation_id = f"generated_empty_{image_id}_{random.randint(1000, 9999)}"
+    
+    return {
+        'category_id': empty_category_id,
+        'category_name': 'empty',
+        'bbox': [x, y, box_width, box_height],
+        'annotation_id': annotation_id
+    }
+
+def find_empty_images_without_annotations(data_dir: str, existing_image_ids: set, target_species: List[str]) -> List[str]:
+    """
+    Find images in the 'empty' folder that don't have annotations.
+    
+    Args:
+        data_dir: Path to data directory
+        existing_image_ids: Set of image IDs that already have annotations
+        target_species: List of target species (must include 'empty')
+        
+    Returns:
+        List of paths to empty images without annotations
+    """
+    if 'empty' not in target_species:
+        return []
+    
+    data_path = Path(data_dir)
+    empty_folder = data_path / 'empty'
+    
+    if not empty_folder.exists():
+        print(f"No 'empty' folder found at {empty_folder}")
+        return []
+    
+    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif'}
+    empty_images_without_annotations = []
+    
+    for img_path in empty_folder.iterdir():
+        if img_path.suffix.lower() in image_extensions:
+            # Try different possible image ID formats
+            possible_ids = [
+                img_path.stem,  # filename without extension
+                img_path.name,  # filename with extension
+                str(img_path.stem).replace('_', '-'),  # handle different naming conventions
+            ]
+            
+            # Check if any of these IDs exist in annotations
+            has_annotation = any(img_id in existing_image_ids for img_id in possible_ids)
+            
+            if not has_annotation:
+                empty_images_without_annotations.append(str(img_path))
+    
+    return empty_images_without_annotations
+
 def create_stratified_split(
     data_dir: str = "../data/full_s3/",
     labels_file: str = "./bboxes.json",
@@ -17,6 +98,7 @@ def create_stratified_split(
 ) -> Dict[str, Dict[str, Any]]:
     """
     Create a stratified train/validation/test split for image dataset using COCO-style annotations.
+    Automatically generates annotations for empty images that don't have them.
     
     Args:
         data_dir: Path to directory containing image folders
@@ -57,12 +139,18 @@ def create_stratified_split(
     
     # Create category mapping from id to name
     category_map = {}
+    empty_category_id = None
     for category in coco_data.get('categories', []):
         category_map[category['id']] = category['name']
+        if category['name'] == 'empty':
+            empty_category_id = category['id']
     
     print(f"Found {len(category_map)} categories in annotations")
     print(f"Categories: {list(category_map.values())}")
     print(f"Target species: {target_species}")
+    
+    if 'empty' in target_species and empty_category_id is None:
+        raise ValueError("'empty' category not found in annotations but specified in target_species")
     
     # Filter categories to only include target species
     target_category_ids = set()
@@ -96,10 +184,12 @@ def create_stratified_split(
     
     # Process annotations and group by image
     image_annotations = defaultdict(list)
+    existing_image_ids = set()
     
     for annotation in coco_data.get('annotations', []):
         image_id = annotation['image_id']
         category_id = annotation['category_id']
+        existing_image_ids.add(image_id)
         
         # Only include annotations for target species
         if category_id in target_category_ids:
@@ -115,6 +205,30 @@ def create_stratified_split(
             image_annotations[image_id].append(annotation_data)
     
     print(f"Found {len(image_annotations)} images with target species annotations")
+    
+    # Find empty images without annotations and generate them
+    if 'empty' in target_species and empty_category_id is not None:
+        empty_images_without_annotations = find_empty_images_without_annotations(
+            data_dir, existing_image_ids, target_species
+        )
+        
+        print(f"Found {len(empty_images_without_annotations)} empty images without annotations")
+        
+        generated_annotations_count = 0
+        for img_path in empty_images_without_annotations:
+            img_path_obj = Path(img_path)
+            image_id = img_path_obj.stem  # Use filename without extension as image_id
+            
+            # Generate annotation for this empty image
+            generated_annotation = generate_empty_annotation(
+                image_id, img_path, empty_category_id
+            )
+            
+            # Add to image_annotations
+            image_annotations[image_id].append(generated_annotation)
+            generated_annotations_count += 1
+        
+        print(f"Generated {generated_annotations_count} annotations for empty images")
     
     # Create samples list matching images with annotations
     samples = []
@@ -304,8 +418,9 @@ def save_splits_to_files(splits: Dict[str, Dict[str, Any]], output_dir: str = ".
             path_to_name = original_path.name # Without these four lines use 'image_path': sample['image_path'] below.
             species_handle = original_path.parent.name 
             bucket_path = f"{species_handle}/{path_to_name}"
+
             save_data.append({
-                'image_path': sample['image_path'], # Use bucket_path for sagemaker training.
+                'image_path': sample['image_path'], # Use bucket_path for sagemaker training, sample['image_path'] for local.
                 'image_id': sample['image_id'],
                 'labels': sample['labels'],
                 'primary_class': sample['primary_class'],
@@ -363,7 +478,7 @@ if __name__ == "__main__":
 
     # Create stratified split
     splits = create_stratified_split(
-        data_dir='./data/full_s3',
+        data_dir='./data/s3+expanded_empty',
         labels_file='./EC2+s3/bboxes.json',
         target_species=target_species,
         train_ratio=0.7,
@@ -373,7 +488,7 @@ if __name__ == "__main__":
     )
 
     # Save splits to files
-    save_splits_to_files(splits)
+    save_splits_to_files(splits, "./EC2+s3/data_augmentation_pipeline/splitsv2")
     
     # Example: Access train data
     if splits['train']['size'] > 0:
