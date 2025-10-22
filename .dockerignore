@@ -1,0 +1,37 @@
+# Data files
+*.csv
+*.json
+*.parquet
+*.h5
+*.pkl
+*.pkl.gz
+*.npz
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Git and IDE
+.git/
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+
+# Logs and cache
+*.log
+.cache/
+.ipynb_checkpoints/
+
+# Large directories
+data/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# System files
+.DS_Store
+Thumbs.db
