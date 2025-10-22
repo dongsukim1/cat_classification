@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import json
 import boto3
-from botocore import UNSIGNED
-from botocore.config import Config
 import requests
 import sys
 
