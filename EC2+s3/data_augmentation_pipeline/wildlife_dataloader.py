@@ -4,7 +4,7 @@ from torchvision import transforms
 from PIL import Image
 import json
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional
 from collections import Counter, defaultdict
 
 class WildlifeDataset(Dataset):
