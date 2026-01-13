@@ -187,7 +187,7 @@ def create_datasets_and_dataloaders_sm(data_dir, labels_file, splits_dir, target
             image_paths = []
             for sample in samples:
                 # Original path to mounted SageMaker path
-                original_path = Path(sample['image_path'])
+                original_path = Path(sample['image_path_aws'])
                 # Reconstruct with SageMaker path
                 new_path = Path(data_dir) / original_path
                 image_paths.append(str(new_path))

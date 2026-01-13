@@ -1,18 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import json
 import argparse
 from pathlib import Path
-import boto3
 
-# SageMaker specific imports
-import sagemaker
-from sagemaker.pytorch import PyTorch
+from wildlife_dataloader_sm import create_datasets_and_dataloaders_sm
+from model_cnn import WildlifeCNN
+from model_efficient_net import WildLifeEfficientNet
 
 def parse_args():
     """Parse command line arguments for SageMaker training."""
@@ -34,9 +30,6 @@ def parse_args():
     parser.add_argument('--num-workers', type=int, default=8)
     
     return parser.parse_args()
-
-from wildlife_dataloader_sm import create_datasets_and_dataloaders_sm
-from model_cnn import WildlifeCNN
 
 def train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs, device):
     """Training function adapted for SageMaker."""
@@ -153,7 +146,7 @@ def main():
     
     # Initialize model
     num_classes = len(label_to_idx)
-    model = WildlifeCNN(num_classes=num_classes)
+    model = WildLifeEfficientNet(num_classes=num_classes)
     
     print("Model Architecture:")
     print(model)

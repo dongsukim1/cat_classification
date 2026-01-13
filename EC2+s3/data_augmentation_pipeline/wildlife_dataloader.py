@@ -317,7 +317,7 @@ def create_datasets_and_dataloaders(
             samples = splits[split_name]['samples']
             
             # Extract image paths and labels
-            image_paths = [sample['image_path'] for sample in samples]
+            image_paths = [sample['image_path_local'] for sample in samples]
             labels = [sample['primary_class'] for sample in samples]
             
             # Create bbox dictionary for this split
@@ -330,7 +330,7 @@ def create_datasets_and_dataloaders(
                 # Also use annotations from the sample if available
                 if 'annotations' in sample and sample['annotations']:
                     if not image_id:
-                        image_id = Path(sample['image_path']).stem
+                        image_id = Path(sample['image_path_local']).stem
                     split_bbox_dict[image_id] = sample['annotations']
             
             # Create dataset

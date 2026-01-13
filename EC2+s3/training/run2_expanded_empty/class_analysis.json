@@ -1,0 +1,136 @@
+{
+  "overall_accuracy": 36.42814902424601,
+  "class_accuracies": {
+    "bobcat": 40.13513513513514,
+    "coyote": 21.482277121374867,
+    "deer": 66.00660066006601,
+    "empty": 11.251980982567353,
+    "fox": 38.78787878787879,
+    "mountain_lion": 0.0
+  },
+  "class_counts": {
+    "bobcat": 740,
+    "coyote": 931,
+    "deer": 909,
+    "empty": 631,
+    "fox": 165,
+    "mountain_lion": 6
+  },
+  "misclassifications": [
+    {
+      "True": "empty",
+      "Predicted": "coyote",
+      "Count": 453
+    },
+    {
+      "True": "coyote",
+      "Predicted": "bobcat",
+      "Count": 273
+    },
+    {
+      "True": "coyote",
+      "Predicted": "deer",
+      "Count": 196
+    },
+    {
+      "True": "bobcat",
+      "Predicted": "fox",
+      "Count": 167
+    },
+    {
+      "True": "coyote",
+      "Predicted": "fox",
+      "Count": 166
+    },
+    {
+      "True": "deer",
+      "Predicted": "empty",
+      "Count": 112
+    },
+    {
+      "True": "bobcat",
+      "Predicted": "coyote",
+      "Count": 110
+    },
+    {
+      "True": "deer",
+      "Predicted": "fox",
+      "Count": 102
+    },
+    {
+      "True": "coyote",
+      "Predicted": "empty",
+      "Count": 95
+    },
+    {
+      "True": "bobcat",
+      "Predicted": "empty",
+      "Count": 84
+    },
+    {
+      "True": "bobcat",
+      "Predicted": "deer",
+      "Count": 82
+    },
+    {
+      "True": "fox",
+      "Predicted": "deer",
+      "Count": 61
+    },
+    {
+      "True": "deer",
+      "Predicted": "bobcat",
+      "Count": 52
+    },
+    {
+      "True": "empty",
+      "Predicted": "bobcat",
+      "Count": 47
+    },
+    {
+      "True": "deer",
+      "Predicted": "coyote",
+      "Count": 43
+    },
+    {
+      "True": "empty",
+      "Predicted": "deer",
+      "Count": 31
+    },
+    {
+      "True": "empty",
+      "Predicted": "fox",
+      "Count": 29
+    },
+    {
+      "True": "fox",
+      "Predicted": "bobcat",
+      "Count": 20
+    },
+    {
+      "True": "fox",
+      "Predicted": "coyote",
+      "Count": 12
+    },
+    {
+      "True": "fox",
+      "Predicted": "empty",
+      "Count": 8
+    },
+    {
+      "True": "mountain_lion",
+      "Predicted": "deer",
+      "Count": 4
+    },
+    {
+      "True": "mountain_lion",
+      "Predicted": "fox",
+      "Count": 2
+    },
+    {
+      "True": "coyote",
+      "Predicted": "mountain_lion",
+      "Count": 1
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "train": {
+    "size": 15750,
+    "class_distribution": {
+      "deer": 4238,
+      "coyote": 4341,
+      "bobcat": 3448,
+      "empty": 2937,
+      "fox": 764,
+      "mountain_lion": 22
+    }
+  },
+  "val": {
+    "size": 3373,
+    "class_distribution": {
+      "bobcat": 739,
+      "deer": 908,
+      "coyote": 930,
+      "empty": 629,
+      "fox": 163,
+      "mountain_lion": 4
+    }
+  },
+  "test": {
+    "size": 3382,
+    "class_distribution": {
+      "coyote": 931,
+      "bobcat": 740,
+      "empty": 631,
+      "deer": 909,
+      "fox": 165,
+      "mountain_lion": 6
+    }
+  },
+  "metadata": {
+    "target_species": [
+      "mountain_lion",
+      "bobcat",
+      "coyote",
+      "fox",
+      "deer",
+      "empty"
+    ],
+    "total_categories": 22,
+    "target_categories": 6,
+    "category_map": {
+      "6": "bobcat",
+      "1": "opossum",
+      "30": "empty",
+      "9": "coyote",
+      "3": "raccoon",
+      "11": "bird",
+      "8": "dog",
+      "16": "cat",
+      "5": "squirrel",
+      "10": "rabbit",
+      "7": "skunk",
+      "14": "lizard",
+      "99": "rodent",
+      "21": "badger",
+      "34": "deer",
+      "37": "cow",
+      "33": "car",
+      "51": "fox",
+      "39": "pig",
+      "40": "mountain_lion",
+      "66": "bat",
+      "97": "insect"
+    }
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "overall_accuracy": 50.354819633353046,
+  "class_accuracies": {
+    "bobcat": 56.486486486486484,
+    "coyote": 19.87110633727175,
+    "deer": 76.23762376237623,
+    "empty": 45.95879556259905,
+    "fox": 69.0909090909091,
+    "mountain_lion": 50.0
+  },
+  "class_counts": {
+    "bobcat": 740,
+    "coyote": 931,
+    "deer": 909,
+    "empty": 631,
+    "fox": 165,
+    "mountain_lion": 6
+  },
+  "misclassifications": [
+    {
+      "True": "coyote",
+      "Predicted": "bobcat",
+      "Count": 335
+    },
+    {
+      "True": "empty",
+      "Predicted": "bobcat",
+      "Count": 212
+    },
+    {
+      "True": "coyote",
+      "Predicted": "fox",
+      "Count": 173
+    },
+    {
+      "True": "coyote",
+      "Predicted": "empty",
+      "Count": 140
+    },
+    {
+      "True": "deer",
+      "Predicted": "fox",
+      "Count": 114
+    },
+    {
+      "True": "bobcat",
+      "Predicted": "empty",
+      "Count": 109
+    },
+    {
+      "True": "bobcat",
+      "Predicted": "fox",
+      "Count": 108
+    },
+    {
+      "True": "coyote",
+      "Predicted": "deer",
+      "Count": 98
+    },
+    {
+      "True": "bobcat",
+      "Predicted": "coyote",
+      "Count": 73
+    },
+    {
+      "True": "empty",
+      "Predicted": "fox",
+      "Count": 63
+    },
+    {
+      "True": "empty",
+      "Predicted": "deer",
+      "Count": 58
+    },
+    {
+      "True": "deer",
+      "Predicted": "bobcat",
+      "Count": 37
+    },
+    {
+      "True": "deer",
+      "Predicted": "coyote",
+      "Count": 33
+    },
+    {
+      "True": "deer",
+      "Predicted": "empty",
+      "Count": 32
+    },
+    {
+      "True": "bobcat",
+      "Predicted": "deer",
+      "Count": 32
+    },
+    {
+      "True": "fox",
+      "Predicted": "deer",
+      "Count": 25
+    },
+    {
+      "True": "fox",
+      "Predicted": "bobcat",
+      "Count": 19
+    },
+    {
+      "True": "empty",
+      "Predicted": "coyote",
+      "Count": 8
+    },
+    {
+      "True": "fox",
+      "Predicted": "empty",
+      "Count": 4
+    },
+    {
+      "True": "fox",
+      "Predicted": "coyote",
+      "Count": 3
+    },
+    {
+      "True": "mountain_lion",
+      "Predicted": "fox",
+      "Count": 2
+    },
+    {
+      "True": "mountain_lion",
+      "Predicted": "deer",
+      "Count": 1
+    }
+  ],
+  "classification_report": {
+    "precision": {
+      "bobcat": 0.40940254652301666,
+      "coyote": 0.6125827814569537,
+      "deer": 0.7640573318632855,
+      "empty": 0.5043478260869565,
+      "fox": 0.1986062717770035,
+      "mountain_lion": 1.0,
+      "accuracy": 0.5035481963335304,
+      "macro avg": 0.5814994596178692,
+      "weighted avg": 0.5691348556272199
+    },
+    "recall": {
+      "bobcat": 0.5648648648648649,
+      "coyote": 0.19871106337271752,
+      "deer": 0.7623762376237624,
+      "empty": 0.4595879556259905,
+      "fox": 0.6909090909090909,
+      "mountain_lion": 0.5,
+      "accuracy": 0.5035481963335304,
+      "macro avg": 0.5294082020660711,
+      "weighted avg": 0.5035481963335304
+    },
+    "f1-score": {
+      "bobcat": 0.4747302668938103,
+      "coyote": 0.3000811030008111,
+      "deer": 0.763215859030837,
+      "empty": 0.48092868988391374,
+      "fox": 0.3085250338294993,
+      "mountain_lion": 0.6666666666666666,
+      "accuracy": 0.5035481963335304,
+      "macro avg": 0.4990246032175896,
+      "weighted avg": 0.4975788746755832
+    },
+    "support": {
+      "bobcat": 740.0,
+      "coyote": 931.0,
+      "deer": 909.0,
+      "empty": 631.0,
+      "fox": 165.0,
+      "mountain_lion": 6.0,
+      "accuracy": 0.5035481963335304,
+      "macro avg": 3382.0,
+      "weighted avg": 3382.0
+    }
+  }
+}
