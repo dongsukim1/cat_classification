@@ -1,6 +1,6 @@
 # Automated Wildlife Camera Trap Classifier
 
-This project and writeup are both currently a work in progress. What is present may not be reflective of current progress.The dataset is derived from the LILA BC Caltech Camera Trap dataset originally published in "Recognition in Terra Incognita" for ECCV. The original publication created 
+This project and writeup are both currently a work in progress. What is present may not be reflective of current progress. The dataset is derived from the LILA BC Caltech Camera Trap dataset originally published in "Recognition in Terra Incognita" for ECCV. The original publication created 
 the dataset as a benchmark to test the ability of SOTA Computer Vision models to be able to generalize between locations. This project aims to use it to finetune a machine learning model to be able to recognize bobcat
 camera traps with high accuracy and eliminate the need for manual classification. The original dataset contains 21 species but my dataset will only use images from 6 species. I designed it this way because it would best 
 match the geographical distributions of interest. 
@@ -15,5 +15,5 @@ them out. I converted the images to grayscale and used that as my metric for "da
 heavy class imbalances. The dataset only contained <200 empty images. I had to augment the dataset using empty images from a similar dataset. I initially ran a simple CNN training run on the problematic dataset and after augmentation the accuracy
 improved for all classes by ~10% using the same architecture. 
 
-Citation
+Citation:
 Sara Beery, Grant Van Horn, Pietro Perona. Recognition in Terra Incognita. Proceedings of the 15th European Conference on Computer Vision (ECCV 2018). 
