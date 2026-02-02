@@ -120,6 +120,21 @@ def main():
     parser.add_argument("--splits-dir", default=None)
     parser.add_argument("--split-name", default="val")
     parser.add_argument("--use-bboxes", action="store_true")
+    parser.add_argument(
+        "--confusion-matrix",
+        action="store_true",
+        help="Print a confusion matrix after evaluation.",
+    )
+    parser.add_argument(
+        "--confusion-matrix-json",
+        default=None,
+        help="Optional path to write confusion matrix JSON output.",
+    )
+    parser.add_argument(
+        "--prediction-summary",
+        action="store_true",
+        help="Print predicted class distribution and top predictions per true class.",
+    )
     args = parser.parse_args()
 
     transform = build_transform()
@@ -148,6 +163,13 @@ def main():
 
     correct = 0
     total = 0
+    num_classes = len(args.classes)
+    per_class_total = np.zeros(num_classes, dtype=int)
+    per_class_correct = np.zeros(num_classes, dtype=int)
+    pred_counts = np.zeros(num_classes, dtype=int)
+    confusion_matrix = None
+    if args.confusion_matrix or args.confusion_matrix_json or args.prediction_summary:
+        confusion_matrix = np.zeros((num_classes, num_classes), dtype=int)
     for start in range(0, len(samples), args.batch_size):
         batch = samples[start : start + args.batch_size]
         inputs = []
@@ -172,14 +194,58 @@ def main():
         preds = np.argmax(outputs, axis=1)
         for pred, true_label in zip(preds, labels):
             total += 1
+            per_class_total[true_label] += 1
             if pred == true_label:
                 correct += 1
+                per_class_correct[true_label] += 1
+            pred_counts[pred] += 1
+            if confusion_matrix is not None:
+                confusion_matrix[true_label, pred] += 1
 
     accuracy = correct / total if total else 0.0
     print(f"Samples evaluated: {total}")
     print(f"Top-1 accuracy: {accuracy:.4f}")
+    print("\nPer-class accuracy:")
+    for idx, label in enumerate(args.classes):
+        class_total = per_class_total[idx]
+        class_correct = per_class_correct[idx]
+        class_acc = class_correct / class_total if class_total else 0.0
+        print(f"  {label}: {class_acc:.4f} ({class_correct}/{class_total})")
+    if args.prediction_summary:
+        print("\nPredicted class distribution:")
+        for idx, label in enumerate(args.classes):
+            count = pred_counts[idx]
+            percent = count / total if total else 0.0
+            print(f"  {label}: {percent:.4f} ({count}/{total})")
+        if confusion_matrix is not None:
+            print("\nTop predicted class per true label:")
+            for idx, label in enumerate(args.classes):
+                row = confusion_matrix[idx]
+                top_idx = int(np.argmax(row)) if row.sum() else None
+                if top_idx is None:
+                    print(f"  {label}: no predictions")
+                    continue
+                top_label = args.classes[top_idx]
+                top_count = int(row[top_idx])
+                top_percent = top_count / row.sum() if row.sum() else 0.0
+                print(
+                    f"  {label}: {top_label} {top_percent:.4f} ({top_count}/{row.sum()})"
+                )
+    if confusion_matrix is not None:
+        print("\nConfusion matrix (rows=true, cols=pred):")
+        header = " " * 14 + " ".join(f"{label[:6]:>6}" for label in args.classes)
+        print(header)
+        for idx, label in enumerate(args.classes):
+            row = " ".join(f"{count:6d}" for count in confusion_matrix[idx])
+            print(f"{label[:12]:>12} {row}")
+    if args.confusion_matrix_json and confusion_matrix is not None:
+        output = {
+            "labels": args.classes,
+            "matrix": confusion_matrix.tolist(),
+        }
+        with open(args.confusion_matrix_json, "w", encoding="utf-8") as handle:
+            json.dump(output, handle, indent=2)
 
 
 if __name__ == "__main__":
     main()
-
