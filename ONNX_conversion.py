@@ -3,16 +3,15 @@ import torch.onnx
 from torchvision import models
 import torch.nn as nn
 import onnxruntime as ort
-from onnxruntime.quantization import quantize_dynamic, QuantType, quantize_static, CalibrationDataReader
 import numpy as np
 import time
 import sys
 
 
-dataloader_path = './sagemaker_training'
-sys.path.append(dataloader_path)
+# dataloader_path = './sagemaker_training'
+# sys.path.append(dataloader_path)
 
-from model_efficient_net import WildLifeEfficientNet as ENB3
+from sagemaker_training.model_efficient_net import WildLifeEfficientNet as ENB3
 
 def convert_to_onnx(model_path, onnx_path, input_size=(4, 3, 224, 224)):
     """Convert PyTorch .pth to ONNX"""
