@@ -9,6 +9,27 @@ import onnxruntime as ort
 from PIL import Image
 from torchvision import transforms
 
+from sagemaker_training.wildlife_dataloader_sm import load_bbox_data_sm
+
+
+def crop_to_bbox(image, bbox_info):
+    if not bbox_info:
+        return image
+    bbox = bbox_info[0].get("bbox", None)
+    if bbox is None:
+        return image
+    x, y, width, height = bbox
+    img_width, img_height = image.size
+    x = max(0, min(x, img_width))
+    y = max(0, min(y, img_height))
+    width = max(1, min(width, img_width - x))
+    height = max(1, min(height, img_height - y))
+    left, top, right, bottom = int(x), int(y), int(x + width), int(y + height)
+    try:
+        return image.crop((left, top, right, bottom))
+    except Exception as exc:
+        print(f"Warning: Failed to crop image with bbox {bbox}: {exc}")
+        return image
 
 def build_transform():
     return transforms.Compose(
@@ -43,8 +64,11 @@ def list_images(base_dir, class_names, max_per_class=None, seed=0, shuffle=False
     return samples
 
 
-def load_image(path, transform):
+def load_image(path, transform, bbox_dict=None, use_bboxes=False):
     image = Image.open(path).convert("RGB")
+    if use_bboxes and bbox_dict is not None:
+        image_id = Path(path).stem
+        image = crop_to_bbox(image, bbox_dict.get(image_id))
     tensor = transform(image)
     return tensor.numpy()
 
@@ -74,10 +98,17 @@ def main():
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--shuffle", action="store_true")
+    parser.add_argument("--labels-file", default=None)
+    parser.add_argument("--use-bboxes", action="store_true")
     args = parser.parse_args()
 
     transform = build_transform()
     label_to_idx = {label: idx for idx, label in enumerate(args.classes)}
+    bbox_dict = {}
+    if args.use_bboxes:
+        if not args.labels_file:
+            raise SystemExit("--labels-file is required when --use-bboxes is set.")
+        bbox_dict = load_bbox_data_sm(args.labels_file)
     samples = list_images(
         args.data_dir,
         args.classes,
@@ -100,7 +131,14 @@ def main():
         labels = []
         for path, label in batch:
             try:
-                inputs.append(load_image(path, transform))
+                inputs.append(
+                    load_image(
+                        path,
+                        transform,
+                        bbox_dict=bbox_dict,
+                        use_bboxes=args.use_bboxes,
+                    )
+                )
                 labels.append(label_to_idx[label])
             except Exception as exc:
                 print(f"⚠️ Skipping {path}: {exc}")
