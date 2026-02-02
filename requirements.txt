@@ -2,6 +2,8 @@
 torch>=2.0.0
 torchvision>=0.15.0
 scikit-learn>=1.0.0
+onnx>=1.14.0
+onnxruntime>=1.16.0
 
 # Image processing
 Pillow>=8.0.0
