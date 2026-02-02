@@ -1,6 +1,7 @@
 # calibrate.py
 import os
 import random
+import json
 import numpy as np
 from PIL import Image
 from torchvision import transforms
@@ -14,6 +15,22 @@ from onnxruntime.quantization import (
 
 from sagemaker_training.wildlife_dataloader_sm import load_bbox_data_sm
 
+
+def load_bbox_from_split(splits_dir, split_name):
+    split_path = Path(splits_dir) / f"{split_name}.json"
+    if not split_path.exists():
+        raise FileNotFoundError(f"Split file not found: {split_path}")
+    with split_path.open() as handle:
+        samples = json.load(handle)
+    bbox_dict = {}
+    for sample in samples:
+        image_id = sample.get("image_id")
+        annotations = sample.get("annotations")
+        if not image_id and sample.get("image_path_local"):
+            image_id = Path(sample["image_path_local"]).stem
+        if image_id and annotations:
+            bbox_dict[image_id] = annotations
+    return bbox_dict
 
 def crop_to_bbox(image, bbox_info):
     if not bbox_info:
@@ -122,15 +139,20 @@ def main():
     parser.add_argument("--input-onnx", default="model.onnx")
     parser.add_argument("--output-onnx", default="model_quant.onnx")
     parser.add_argument("--labels-file", default=None)
+    parser.add_argument("--splits-dir", default=None)
+    parser.add_argument("--split-name", default="train")
     parser.add_argument("--use-bboxes", action="store_true")
     args = parser.parse_args()
 
     bbox_dict = {}
     if args.use_bboxes:
-        if not args.labels_file:
-            raise SystemExit("--labels-file is required when --use-bboxes is set.")
-        bbox_dict = load_bbox_data_sm(args.labels_file)
-
+        if args.labels_file:
+            bbox_dict = load_bbox_data_sm(args.labels_file)
+        elif args.splits_dir:
+            bbox_dict = load_bbox_from_split(args.splits_dir, args.split_name)
+        else:
+            raise SystemExit("--labels-file or --splits-dir is required when --use-bboxes is set.")
+        
     print("🔍 Building calibration dataset from class folders...")
     calib_reader = CalibrationReader(
         base_dir=args.data_dir,

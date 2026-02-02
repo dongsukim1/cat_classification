@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import os
 import random
 from pathlib import Path
@@ -10,6 +11,23 @@ from PIL import Image
 from torchvision import transforms
 
 from sagemaker_training.wildlife_dataloader_sm import load_bbox_data_sm
+
+
+def load_bbox_from_split(splits_dir, split_name):
+    split_path = Path(splits_dir) / f"{split_name}.json"
+    if not split_path.exists():
+        raise FileNotFoundError(f"Split file not found: {split_path}")
+    with split_path.open() as handle:
+        samples = json.load(handle)
+    bbox_dict = {}
+    for sample in samples:
+        image_id = sample.get("image_id")
+        annotations = sample.get("annotations")
+        if not image_id and sample.get("image_path_local"):
+            image_id = Path(sample["image_path_local"]).stem
+        if image_id and annotations:
+            bbox_dict[image_id] = annotations
+    return bbox_dict
 
 
 def crop_to_bbox(image, bbox_info):
@@ -99,6 +117,8 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--shuffle", action="store_true")
     parser.add_argument("--labels-file", default=None)
+    parser.add_argument("--splits-dir", default=None)
+    parser.add_argument("--split-name", default="val")
     parser.add_argument("--use-bboxes", action="store_true")
     args = parser.parse_args()
 
@@ -106,9 +126,12 @@ def main():
     label_to_idx = {label: idx for idx, label in enumerate(args.classes)}
     bbox_dict = {}
     if args.use_bboxes:
-        if not args.labels_file:
-            raise SystemExit("--labels-file is required when --use-bboxes is set.")
-        bbox_dict = load_bbox_data_sm(args.labels_file)
+        if args.labels_file:
+            bbox_dict = load_bbox_data_sm(args.labels_file)
+        elif args.splits_dir:
+            bbox_dict = load_bbox_from_split(args.splits_dir, args.split_name)
+        else:
+            raise SystemExit("--labels-file or --splits-dir is required when --use-bboxes is set.")
     samples = list_images(
         args.data_dir,
         args.classes,
@@ -159,3 +182,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
