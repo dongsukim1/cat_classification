@@ -415,7 +415,6 @@ def save_splits_to_files(splits: Dict[str, Dict[str, Any]], output_dir: str = ".
             original_path = Path(sample['image_path']) 
             path_to_name = original_path.name 
             species_handle = original_path.parent.name 
-            bucket_path = f"{species_handle}/{path_to_name}" # Sagemaker requires relative pathing
             save_data.append({
                 'image_id': sample['image_id'],
                 'primary_class': sample['primary_class'],

@@ -2,3 +2,16 @@
 *.pem
 /EC2+s3/*.json
 /*.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# ONNX artifacts (large binary files)
+*.onnx
+
+# Patches
+*.patch

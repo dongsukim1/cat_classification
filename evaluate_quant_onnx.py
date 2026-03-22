@@ -10,44 +10,11 @@ import onnxruntime as ort
 from PIL import Image
 from torchvision import transforms
 
-from sagemaker_training.wildlife_dataloader_sm import load_bbox_data_sm
-
-
-def load_bbox_from_split(splits_dir, split_name):
-    split_path = Path(splits_dir) / f"{split_name}.json"
-    if not split_path.exists():
-        raise FileNotFoundError(f"Split file not found: {split_path}")
-    with split_path.open() as handle:
-        samples = json.load(handle)
-    bbox_dict = {}
-    for sample in samples:
-        image_id = sample.get("image_id")
-        annotations = sample.get("annotations")
-        if not image_id and sample.get("image_path_local"):
-            image_id = Path(sample["image_path_local"]).stem
-        if image_id and annotations:
-            bbox_dict[image_id] = annotations
-    return bbox_dict
-
-
-def crop_to_bbox(image, bbox_info):
-    if not bbox_info:
-        return image
-    bbox = bbox_info[0].get("bbox", None)
-    if bbox is None:
-        return image
-    x, y, width, height = bbox
-    img_width, img_height = image.size
-    x = max(0, min(x, img_width))
-    y = max(0, min(y, img_height))
-    width = max(1, min(width, img_width - x))
-    height = max(1, min(height, img_height - y))
-    left, top, right, bottom = int(x), int(y), int(x + width), int(y + height)
-    try:
-        return image.crop((left, top, right, bottom))
-    except Exception as exc:
-        print(f"Warning: Failed to crop image with bbox {bbox}: {exc}")
-        return image
+from sagemaker_training.wildlife_dataloader_sm import (
+    load_bbox_data_sm,
+    load_bbox_from_split,
+    crop_to_bbox,
+)
 
 def build_transform():
     return transforms.Compose(
@@ -104,7 +71,7 @@ def main():
     parser.add_argument(
         "--classes",
         nargs="+",
-        default=["mountain_lion", "bobcat", "coyote", "fox", "deer", "empty"],
+        default=["bobcat", "coyote", "deer", "empty", "fox", "mountain_lion"],
         help="Class folder names in label order.",
     )
     parser.add_argument(

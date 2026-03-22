@@ -125,6 +125,26 @@ class WildlifeDataset(Dataset):
         
         return torch.FloatTensor(weights)
     
+def load_bbox_from_split(splits_dir, split_name):
+    """Load bounding box data from a split JSON file."""
+    split_path = Path(splits_dir) / f"{split_name}.json"
+    if not split_path.exists():
+        raise FileNotFoundError(f"Split file not found: {split_path}")
+    with split_path.open() as handle:
+        samples = json.load(handle)
+    bbox_dict = {}
+    for sample in samples:
+        image_id = sample.get("image_id")
+        annotations = sample.get("annotations")
+        if not image_id:
+            image_path = sample.get("image_path", "")
+            if image_path:
+                image_id = Path(image_path).stem
+        if image_id and annotations:
+            bbox_dict[image_id] = annotations
+    return bbox_dict
+
+
 def load_bbox_data_sm(labels_file):
     """Load bounding box data from COCO-style JSON file for SageMaker."""
     print(f"Loading bbox data from {labels_file}...")
