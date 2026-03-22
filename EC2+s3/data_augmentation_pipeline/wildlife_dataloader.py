@@ -317,21 +317,31 @@ def create_datasets_and_dataloaders(
             samples = splits[split_name]['samples']
             
             # Extract image paths and labels
-            image_paths = [sample['image_path_local'] for sample in samples]
-            labels = [sample['primary_class'] for sample in samples]
-            
+            image_paths = []
+            labels = []
+            for sample in samples:
+                # Unified path resolution: image_path is class/filename.jpg
+                original_path = sample.get('image_path') or sample.get('image_path_local', '')
+                if not original_path:
+                    continue
+                full_path = str(Path(data_dir) / original_path)
+                image_paths.append(full_path)
+                labels.append(sample['primary_class'])
+
             # Create bbox dictionary for this split
             split_bbox_dict = {}
             for sample in samples:
                 image_id = sample.get('image_id')
                 if image_id and image_id in bbox_dict:
                     split_bbox_dict[image_id] = bbox_dict[image_id]
-                
+
                 # Also use annotations from the sample if available
                 if 'annotations' in sample and sample['annotations']:
                     if not image_id:
-                        image_id = Path(sample['image_path_local']).stem
-                    split_bbox_dict[image_id] = sample['annotations']
+                        resolved = sample.get('image_path') or sample.get('image_path_local', '')
+                        image_id = Path(resolved).stem if resolved else None
+                    if image_id:
+                        split_bbox_dict[image_id] = sample['annotations']
             
             # Create dataset
             dataset = WildlifeDataset(

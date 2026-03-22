@@ -186,11 +186,12 @@ def create_datasets_and_dataloaders_sm(data_dir, labels_file, splits_dir, target
             
             image_paths = []
             for sample in samples:
-                # Original path to mounted SageMaker path
-                original_path = Path(sample['image_path_aws'])
-                # Reconstruct with SageMaker path
-                new_path = Path(data_dir) / original_path
-                image_paths.append(str(new_path))
+                # Unified path resolution: image_path is class/filename.jpg
+                original_path = sample.get('image_path') or sample.get('image_path_aws', '')
+                if not original_path:
+                    continue
+                full_path = str(Path(data_dir) / original_path)
+                image_paths.append(full_path)
             
             labels = [sample['primary_class'] for sample in samples]
             
