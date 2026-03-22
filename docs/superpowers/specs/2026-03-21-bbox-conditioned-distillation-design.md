@@ -22,6 +22,12 @@ Replace the current EfficientNet-B3 (42MB, quantization-hostile) with a small, q
 
 Both use ImageNet-pretrained weights. Classifier head replaced with `nn.Linear(feat_dim, 6)`.
 
+### Student Feature Dimensions
+| Model | Feature Extraction Point | Dim | Method |
+|---|---|---|---|
+| MobileNetV3-Small | After global avg pool, before classifier | 576 | Forward hook on `classifier[0]` input, or split `model.features` + `model.avgpool` from `model.classifier` |
+| MobileNetV4-Conv-S | After global avg pool, before classifier | 1024 | `timm`'s `model.forward_features()` returns pooled features directly |
+
 ### Projection Head
 Maps student penultimate features to teacher CLS token space:
 ```
@@ -57,10 +63,11 @@ Each training sample produces two views:
 ### Dataset Implementation
 Modify `WildlifeDataset.__getitem__()` to return:
 ```python
-(student_tensor, teacher_tensor, label, has_bbox)
+(student_tensor, teacher_tensor, label, apply_distill)
 ```
-- `has_bbox` is False for empty class samples, True otherwise
-- Controls whether distillation loss is applied per-sample
+- `apply_distill` is False for empty class samples, True for all animal classes (regardless of whether a bbox annotation exists)
+- When `apply_distill=True` but no bbox annotation is available, the teacher receives the full image (same as student) as a fallback
+- Controls whether distillation loss is applied per-sample in the training loop via a boolean mask over the batch
 
 ### Data Source
 - Existing split JSON files (v2) with embedded bbox annotations
@@ -80,9 +87,9 @@ L = alpha(t) * L_distill + (1 - alpha(t)) * L_ce
 - `alpha(t)`: Linear anneal from 0.9 to 0.3 over training epochs
 
 **Training details:**
-- Optimizer: Adam, LR=0.001
+- Optimizer: Adam, LR=0.001 with CosineAnnealingLR scheduler
 - Batch size: 32
-- Teacher: `torch.no_grad()`, `.eval()` mode always
+- Teacher: `torch.no_grad()`, `.eval()` mode, `torch.cuda.amp.autocast()` for FP16 forward passes (halves VRAM usage)
 - Student: full backbone unfrozen, ImageNet-pretrained init
 - Projection head trained alongside student
 
@@ -106,15 +113,18 @@ L = alpha(t) * L_distill + (1 - alpha(t)) * L_ce
 
 ### Phase 3: ONNX Export & Quantization
 
-1. Convert QAT model to quantized PyTorch model via `torch.ao.quantization.convert`
-2. Export to ONNX (opset 13, dynamic batch axis, constant folding)
-3. Run `onnxruntime.quantization.quant_pre_process`
-4. Apply `quantize_static` with:
-   - Per-channel QInt8 weights
-   - Per-tensor QUInt8 activations
-   - MinMax calibration
-   - Exclude final classifier layer
-5. Validate: compare FP32 vs INT8 accuracy on test set
+Export the QAT model **before** calling `torch.ao.quantization.convert` — the fake-quant nodes export as native ONNX `QuantizeLinear`/`DequantizeLinear` ops, preserving the learned quantization parameters.
+
+1. Export QAT model (with fake-quant nodes attached) to ONNX (opset 13, dynamic batch axis)
+2. Run `onnxruntime.quantization.quant_pre_process` to optimize the graph
+3. Validate quantized ONNX accuracy on test set against FP32 baseline
+
+If the direct QAT export produces issues, fall back to:
+1. Call `torch.ao.quantization.convert` to get a quantized PyTorch model
+2. Export to ONNX as FP32 (strip quantization)
+3. Apply ONNX Runtime `quantize_static` with per-channel QInt8 weights, QUInt8 activations, MinMax calibration, excluding the final classifier layer
+
+**Do not** apply `quantize_static` on top of an already-quantized ONNX graph — this would double-quantize.
 
 ## Success Criteria
 
@@ -125,6 +135,8 @@ L = alpha(t) * L_distill + (1 - alpha(t)) * L_ce
 | Overall test accuracy | >= 90% |
 | Bobcat test accuracy | >= 95% (improvement over current 94.8%) |
 | Browser inference latency | < 100ms at 224x224 |
+
+**Minimum viable fallback**: If 90% overall is not achievable, 87% overall with < 3MB is an acceptable intermediate result that still represents a major improvement over the current state (no working quantized model at all).
 
 ## SageMaker Infrastructure
 
@@ -143,18 +155,55 @@ checkpoint_local_path='/opt/ml/checkpoints'
 ### Job Structure
 - Phase 1 and Phase 2 run as separate SageMaker training jobs
 - Both student models (MobileNetV3-Small, MobileNetV4-Conv-S) trained as separate Phase 1 jobs
-- Phase 2 runs only on the better-performing student from Phase 1
+- Phase 2 runs only on the better-performing student from Phase 1 (selected by highest val accuracy; ties broken by smaller model size)
 - Total estimated cost with spot: ~$0.50-$0.75
 
 ### Dependencies
 Add to requirements.txt:
-- `timm` (for MobileNetV4-Conv-S and DINOv2)
+- `timm>=1.0.0` (for MobileNetV4-Conv-S via `mobilenetv4_conv_small.e2400_r224_in1k` and DINOv2)
+
+### Known Risks
+- **MobileNetV4 QAT**: `timm` models lack built-in `torch.ao.quantization` fuse mappings. Custom `fuse_modules` may be needed for Phase 2. If QAT proves impractical for MobileNetV4, fall back to PTQ-only (the quantization-friendly architecture may tolerate PTQ well enough).
+- **DINOv2-Large download**: ~1.2GB download on each SageMaker job start. Pre-cache weights to S3 and load via data channel to avoid repeated downloads and spot restart delays.
 
 ### Training Script
 - Unified entry point with `--phase` flag (1 or 2) and `--student-arch` flag
 - Checkpoint resume logic: scan `/opt/ml/checkpoints/` on startup
 - Phase 1: loads teacher, builds projection head, runs distillation loop
 - Phase 2: loads Phase 1 best checkpoint, inserts QAT nodes, fine-tunes
+
+## Path Unification (Prerequisite)
+
+The current split JSON files store environment-specific paths (`image_path_local` with Windows backslashes, `image_path_aws` with S3-relative paths), forcing manual edits when switching between local evaluation and SageMaker. The calibration and evaluation scripts bypass splits entirely and hardcode `./data/s3+expanded_empty`.
+
+### Solution: Relative class-based paths + runtime base dir resolution
+
+**Split JSON format** — store only the environment-agnostic relative path:
+```json
+{
+  "image_id": "...",
+  "primary_class": "bobcat",
+  "image_path": "bobcat/<image_id>.jpg",
+  "annotations": [...]
+}
+```
+- Forward slashes always (works on both Windows and Linux via `pathlib`)
+- Path is relative to a configurable data root, not any specific directory structure
+
+**Runtime resolution** — every consumer receives a `--data-dir` argument and joins it with the relative path:
+```python
+full_path = Path(data_dir) / sample["image_path"]
+```
+- Local: `--data-dir ./data/s3+expanded_empty`
+- SageMaker: `--data-dir /opt/ml/input/data/train` (mounted S3 channel)
+- No manual editing of split files required
+
+**Changes required:**
+1. Regenerate split JSONs with unified `image_path` field (class/filename only, forward slashes)
+2. Update `wildlife_dataloader_sm.py` to use `image_path` + `data_dir` resolution
+3. Update `wildlife_dataloader.py` to use the same pattern
+4. Update `calibrate_onnx.py` and `evaluate_quant_onnx.py` to optionally load from split files with the same resolution
+5. Remove `image_path_local` and `image_path_aws` fields
 
 ## Deployment (Out of Scope for Training Plan)
 
