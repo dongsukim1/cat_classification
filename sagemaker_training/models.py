@@ -65,11 +65,38 @@ class MobileNetV4ConvSStudent(nn.Module):
         return self.base(x)
 
 
+class EfficientNetLite0Student(nn.Module):
+    """EfficientNet-Lite0 with feature extraction for distillation.
+
+    No SE blocks, no HardSigmoid — pure Conv+ReLU6. Designed by Google
+    specifically for quantization by stripping problematic ops.
+    """
+
+    feature_dim = 1280
+
+    def __init__(self, num_classes: int = 6):
+        super().__init__()
+        if timm is None:
+            raise ImportError("timm is required for EfficientNet-Lite0")
+        self.base = timm.create_model(
+            "efficientnet_lite0",
+            pretrained=True,
+            num_classes=num_classes,
+        )
+
+    def extract_features(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.base.forward_features(x)
+        return self.base.forward_head(x, pre_logits=True)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.base(x)
+
+
 def create_student(arch: str, num_classes: int = 6) -> nn.Module:
     """Factory function to create a student model.
 
     Args:
-        arch: One of 'mobilenetv3_small', 'mobilenetv4_conv_s'
+        arch: One of 'mobilenetv3_small', 'mobilenetv4_conv_s', 'efficientnet_lite0'
         num_classes: Number of output classes
 
     Returns:
@@ -79,7 +106,9 @@ def create_student(arch: str, num_classes: int = 6) -> nn.Module:
         return MobileNetV3SmallStudent(num_classes)
     elif arch == "mobilenetv4_conv_s":
         return MobileNetV4ConvSStudent(num_classes)
+    elif arch == "efficientnet_lite0":
+        return EfficientNetLite0Student(num_classes)
     else:
         raise ValueError(
-            f"Unknown architecture: {arch}. Choose from: mobilenetv3_small, mobilenetv4_conv_s"
+            f"Unknown architecture: {arch}. Choose from: mobilenetv3_small, mobilenetv4_conv_s, efficientnet_lite0"
         )

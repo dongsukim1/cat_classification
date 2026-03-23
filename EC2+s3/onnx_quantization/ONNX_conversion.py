@@ -31,7 +31,7 @@ def convert_to_onnx(model_path, onnx_path, input_size=(4, 3, 224, 224)):
     print("Model loaded successfully")
     
     # Create dummy input
-    dummy_input = torch.randn(*input_size)
+    dummy_input = torch.rand(*input_size)
     
     # Export to ONNX
     print("Exporting to ONNX...")
@@ -47,7 +47,6 @@ def convert_to_onnx(model_path, onnx_path, input_size=(4, 3, 224, 224)):
             'input': {0: 'batch_size'},
             'output': {0: 'batch_size'}
         },
-        do_constant_folding=True,  # Optimize constants
-        verbose=False
+        verbose=False,
     )
     print(f"✅ ONNX model saved to: {onnx_path}")

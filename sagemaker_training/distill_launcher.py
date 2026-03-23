@@ -2,9 +2,8 @@
 """SageMaker launcher for distillation training with spot instances."""
 import argparse
 import time
-
-import boto3
 import sagemaker
+from sagemaker.inputs import TrainingInput
 from sagemaker.pytorch import PyTorch
 
 
@@ -19,7 +18,7 @@ def launch_phase1(args, role, session):
         "batch-size-train": args.batch_size_train,
         "batch-size-val": args.batch_size_val,
         "learning-rate": args.phase1_lr,
-        "num-workers": 8,
+        "num-workers": 4,
     }
 
     if args.teacher_weights_s3:
@@ -70,13 +69,13 @@ def launch_phase2(args, role, session, phase1_model_s3):
         "batch-size-train": args.batch_size_train,
         "batch-size-val": args.batch_size_val,
         "learning-rate": args.phase2_lr,
-        "num-workers": 8,
+        "num-workers": 4,
     }
 
     input_paths = {
         "train": f"s3://{bucket}/caltech_images",
         "splits": f"s3://{bucket}/training_loop/data_augmentation_pipeline/{splits}",
-        "phase1": phase1_model_s3,
+        "phase1": TrainingInput(phase1_model_s3, content_type="application/x-tar"),
     }
 
     estimator = PyTorch(
@@ -107,7 +106,7 @@ def launch_phase2(args, role, session, phase1_model_s3):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--student-arch", required=True,
-                        choices=["mobilenetv3_small", "mobilenetv4_conv_s"])
+                        choices=["mobilenetv3_small", "mobilenetv4_conv_s", "efficientnet_lite0"])
     parser.add_argument("--bucket", default="big-cat-data2")
     parser.add_argument("--splits-version", default="splitsv2")
     parser.add_argument("--instance-type", default="ml.g4dn.xlarge")
@@ -119,13 +118,24 @@ def main():
     parser.add_argument("--batch-size-val", type=int, default=64)
     parser.add_argument("--teacher-weights-s3", default=None,
                         help="S3 URI to pre-cached DINOv2 weights")
+    parser.add_argument("--role", default=None,
+                        help="SageMaker execution role ARN (required when running locally)")
     parser.add_argument("--skip-phase1", action="store_true")
     parser.add_argument("--phase1-model-s3", default=None,
                         help="S3 URI to Phase 1 model output (for --skip-phase1)")
     args = parser.parse_args()
 
     session = sagemaker.Session()
-    role = sagemaker.get_execution_role()
+    if args.role:
+        role = args.role
+    else:
+        try:
+            role = sagemaker.get_execution_role()
+        except ValueError:
+            raise SystemExit(
+                "Could not determine SageMaker role. Pass --role <arn> when running locally.\n"
+                "Find your role: aws iam list-roles --query \"Roles[?contains(RoleName, 'SageMaker')].[Arn]\" --output text"
+            )
 
     if not args.skip_phase1:
         print(f"=== Phase 1: Distillation ({args.student_arch}) ===")

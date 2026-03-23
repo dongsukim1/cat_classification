@@ -2,8 +2,12 @@
 import argparse
 import json
 import os
+import sys
 import random
 from pathlib import Path
+
+# Allow imports from project root
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import numpy as np
 import onnxruntime as ort

@@ -103,7 +103,7 @@ def validate(student, dataloader, device):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--student-arch", default="mobilenetv3_small",
-                        choices=["mobilenetv3_small", "mobilenetv4_conv_s"])
+                        choices=["mobilenetv3_small", "mobilenetv4_conv_s", "efficientnet_lite0"])
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch-size-train", type=int, default=32)
     parser.add_argument("--batch-size-val", type=int, default=64)

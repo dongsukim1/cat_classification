@@ -34,7 +34,7 @@ def preprocess_image(image_path):
 
 def main():
     pth_path = "./EC2+s3/training/run4_expanded_empty_ENB3/model.pth"         
-    onnx_path = "model_quant.onnx"        # Your exported ONNX
+    onnx_path = "model.onnx"        # Your exported ONNX
     test_image = "./data/s3+expanded_empty/bobcat/5a0b00c7-23d2-11e8-a6a3-ec086b02610b.jpg"        
 
     img = Image.open(test_image)

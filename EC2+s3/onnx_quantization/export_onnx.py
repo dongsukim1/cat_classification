@@ -2,13 +2,15 @@
 """Phase 3: Export QAT model to ONNX and validate."""
 import argparse
 import sys
+from pathlib import Path
 
 import numpy as np
 import onnxruntime as ort
 import torch
 import torch.ao.quantization as tq
 
-sys.path.append("./sagemaker_training")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "sagemaker_training"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from models import create_student
 
 
@@ -59,7 +61,7 @@ def validate_onnx(onnx_path, student, num_samples=10):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--student-arch", required=True,
-                        choices=["mobilenetv3_small", "mobilenetv4_conv_s"])
+                        choices=["mobilenetv3_small", "mobilenetv4_conv_s", "efficientnet_lite0"])
     parser.add_argument("--qat-model", required=True, help="Path to model_qat.pth")
     parser.add_argument("--output", default="model_distilled.onnx")
     parser.add_argument("--opset", type=int, default=13)

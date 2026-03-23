@@ -1,5 +1,6 @@
 # calibrate.py
 import os
+import sys
 import random
 import json
 import numpy as np
@@ -7,6 +8,9 @@ from PIL import Image
 from torchvision import transforms
 from pathlib import Path
 import argparse
+
+# Allow imports from project root
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from onnxruntime.quantization import (
     quantize_static,
     CalibrationDataReader,

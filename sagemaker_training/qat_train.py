@@ -50,7 +50,7 @@ def prepare_qat_model(student, arch):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--student-arch", default="mobilenetv3_small",
-                        choices=["mobilenetv3_small", "mobilenetv4_conv_s"])
+                        choices=["mobilenetv3_small", "mobilenetv4_conv_s", "efficientnet_lite0"])
     parser.add_argument("--phase1-model", required=True,
                         help="Path to best Phase 1 model.pth")
     parser.add_argument("--epochs", type=int, default=10)
@@ -72,9 +72,28 @@ def main():
     label_to_idx = {label: idx for idx, label in enumerate(CLASS_NAMES)}
     num_classes = len(CLASS_NAMES)
 
+    # Resolve Phase 1 model path — SageMaker may deliver a .tar.gz instead of extracting
+    model_path = args.phase1_model
+    if not os.path.exists(model_path):
+        phase1_dir = os.path.dirname(model_path)
+        tarball = os.path.join(phase1_dir, "model.tar.gz")
+        if os.path.exists(tarball):
+            import tarfile
+            print(f"Extracting {tarball} to {phase1_dir}")
+            with tarfile.open(tarball, "r:gz") as tar:
+                tar.extractall(path=phase1_dir)
+        if not os.path.exists(model_path):
+            # Search for model.pth anywhere under the channel dir
+            for root, dirs, files in os.walk(phase1_dir):
+                for f in files:
+                    if f == "model.pth":
+                        model_path = os.path.join(root, f)
+                        break
+    print(f"Using Phase 1 model: {model_path}")
+
     # Load Phase 1 best model
     student = create_student(args.student_arch, num_classes=num_classes)
-    state_dict = torch.load(args.phase1_model, map_location=device)
+    state_dict = torch.load(model_path, map_location=device)
     student.load_state_dict(state_dict)
     print(f"Loaded Phase 1 model from {args.phase1_model}")
 
@@ -109,14 +128,16 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size_val,
                             shuffle=False, num_workers=args.num_workers)
 
-    # Class weights
+    # Class weights from JSON (avoids loading every image)
     counts = torch.zeros(num_classes)
-    for _, label in train_dataset:
-        counts[label] += 1
+    for s in train_samples:
+        cls = s.get("primary_class", "")
+        if cls in label_to_idx:
+            counts[label_to_idx[cls]] += 1
     class_weights = (1.0 / counts.clamp(min=1))
     class_weights = class_weights / class_weights.sum() * num_classes
 
-    criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weights.to(device))
     optimizer = Adam(student.parameters(), lr=args.learning_rate)
 
     # Resume
@@ -136,6 +157,8 @@ def main():
         total_loss, correct, total = 0.0, 0, 0
 
         for inputs, labels in train_loader:
+            inputs = inputs.to(device)
+            labels = labels.to(device)
             optimizer.zero_grad()
             outputs = student(inputs)
             loss = criterion(outputs, labels)
@@ -151,6 +174,8 @@ def main():
         val_correct, val_total = 0, 0
         with torch.no_grad():
             for inputs, labels in val_loader:
+                inputs = inputs.to(device)
+                labels = labels.to(device)
                 outputs = student(inputs)
                 val_correct += (outputs.argmax(1) == labels).sum().item()
                 val_total += labels.size(0)
